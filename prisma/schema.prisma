@@ -1,0 +1,596 @@
+// Esquema de dados do Uay Market.
+//
+// Regras:
+// - Dinheiro sempre em centavos inteiros (Int). R$ 12,34 = 1234. Nunca float.
+// - Quantidades em milésimos inteiros (Int). 1 unidade = 1000; 0,350 kg = 350.
+//   Isso permite vender por peso e por unidade com o mesmo campo, sem float.
+// - Percentuais em pontos-base (Int). 1,99% = 199.
+// - Timestamps em UTC; a interface formata em America/Sao_Paulo.
+// - Banco: Postgres (Neon em produção, embedded-postgres local em desenvolvimento).
+//   Até 16/09/2026 era SQLite; a migração inicial foi regerada pra Postgres.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // conexão pooled (Neon: host com -pooler)
+  directUrl = env("DIRECT_URL") // conexão direta, usada pelas migrações
+}
+
+// ---------------------------------------------------------------- enums
+
+enum Papel {
+  ADMIN
+  OPERADOR
+}
+
+enum Unidade {
+  UN
+  KG
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  DEBITO
+  CREDITO
+  FIADO
+}
+
+enum StatusVenda {
+  CONCLUIDA
+  CANCELADA
+}
+
+enum StatusCaixa {
+  ABERTO
+  FECHADO
+}
+
+enum TipoMovimentoCaixa {
+  SANGRIA
+  SUPRIMENTO
+}
+
+enum TipoMovimentoEstoque {
+  ENTRADA
+  VENDA
+  PERDA
+  AJUSTE
+  CANCELAMENTO_VENDA
+}
+
+enum MotivoPerda {
+  VENCIDO
+  AVARIA
+  FURTO
+  QUEBRA
+  CONSUMO_INTERNO
+  OUTRO
+}
+
+enum StatusConta {
+  PENDENTE
+  PAGA
+  CANCELADA
+}
+
+enum Recorrencia {
+  MENSAL
+}
+
+enum TipoLancamentoFiado {
+  DEBITO
+  PAGAMENTO
+  ESTORNO
+}
+
+enum StatusPagamentoMP {
+  PENDENTE
+  APROVADO
+  CANCELADO
+  ERRO
+}
+
+// ---------------------------------------------------------------- acesso
+
+model Usuario {
+  id           Int       @id @default(autoincrement())
+  nome         String
+  pinHash      String
+  papel        Papel     @default(OPERADOR)
+  ativo        Boolean   @default(true)
+  ultimoAcesso DateTime?
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+
+  vendas             Venda[]            @relation("VendasDoUsuario")
+  entradasEstornadas EntradaEstoque[]   @relation("EntradasEstornadasPor")
+  vendasCanceladas   Venda[]            @relation("VendasCanceladasPor")
+  sessoesAbertas     SessaoCaixa[]      @relation("SessoesAbertasPor")
+  sessoesFechadas    SessaoCaixa[]      @relation("SessoesFechadasPor")
+  movimentosCaixa    MovimentoCaixa[]
+  movimentosEstoque  MovimentoEstoque[]
+  entradas           EntradaEstoque[]
+  perdas             Perda[]
+  despesas           Despesa[]
+  lancamentosFiado   LancamentoFiado[]
+  historicoPrecos    HistoricoPreco[]
+  auditorias         Auditoria[]
+}
+
+// ---------------------------------------------------------------- catálogo
+
+model Categoria {
+  id       Int       @id @default(autoincrement())
+  nome     String    @unique
+  cor      String?
+  ordem    Int       @default(0)
+  produtos Produto[]
+}
+
+model Fornecedor {
+  id         Int      @id @default(autoincrement())
+  nome       String
+  cnpj       String?
+  telefone   String?
+  email      String?
+  contato    String?
+  observacao String?
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+
+  entradas EntradaEstoque[]
+  contas   ContaPagar[]
+  despesas Despesa[]
+}
+
+model Produto {
+  id               Int        @id @default(autoincrement())
+  codigoBarras     String?    @unique
+  codigoInterno    String?    @unique
+  nome             String
+  descricao        String?
+  categoriaId      Int?
+  categoria        Categoria? @relation(fields: [categoriaId], references: [id])
+  unidade          Unidade    @default(UN)
+  precoVenda       Int // centavos
+  precoCusto       Int        @default(0) // custo médio ponderado atual, centavos
+  precoPromocional Int? // centavos; vale enquanto promocaoAte >= hoje
+  promocaoAte      DateTime?
+  estoque          Int        @default(0) // milésimos
+  estoqueMinimo    Int        @default(0) // milésimos
+  controlaValidade Boolean    @default(false)
+  ativo            Boolean    @default(true)
+  criadoEm         DateTime   @default(now())
+  atualizadoEm     DateTime   @updatedAt
+
+  lotes           Lote[]
+  itensVenda      ItemVenda[]
+  itensEntrada    ItemEntrada[]
+  movimentos      MovimentoEstoque[]
+  perdas          Perda[]
+  historicoPrecos HistoricoPreco[]
+
+  @@index([nome])
+  @@index([categoriaId])
+}
+
+model HistoricoPreco {
+  id                 Int      @id @default(autoincrement())
+  produtoId          Int
+  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  precoVendaAnterior Int
+  precoVendaNovo     Int
+  precoCustoAnterior Int
+  precoCustoNovo     Int
+  usuarioId          Int?
+  usuario            Usuario? @relation(fields: [usuarioId], references: [id])
+  criadoEm           DateTime @default(now())
+
+  @@index([produtoId, criadoEm])
+}
+
+// Lote = quantidade de um produto com uma validade. Só existe pra produtos
+// com controlaValidade = true. A venda baixa FEFO (vence primeiro, sai primeiro).
+model Lote {
+  id            Int             @id @default(autoincrement())
+  produtoId     Int
+  produto       Produto         @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  codigo        String?
+  validade      DateTime
+  quantidade    Int // milésimos restantes
+  custoUnitario Int // centavos
+  entradaId     Int?
+  entrada       EntradaEstoque? @relation(fields: [entradaId], references: [id])
+  criadoEm      DateTime        @default(now())
+
+  itensVenda ItemVenda[]
+  perdas     Perda[]
+
+  @@index([produtoId, validade])
+  @@index([validade])
+}
+
+// ---------------------------------------------------------------- estoque
+
+model EntradaEstoque {
+  id             Int         @id @default(autoincrement())
+  fornecedorId   Int?
+  fornecedor     Fornecedor? @relation(fields: [fornecedorId], references: [id])
+  numeroNota     String?
+  data           DateTime    @default(now())
+  valorTotal     Int // centavos (soma dos itens)
+  frete          Int         @default(0) // centavos, rateado no custo
+  observacao     String?
+  usuarioId      Int?
+  usuario        Usuario?    @relation(fields: [usuarioId], references: [id])
+  estornadaEm    DateTime?
+  estornadaPorId Int?
+  estornadaPor   Usuario?    @relation("EntradasEstornadasPor", fields: [estornadaPorId], references: [id])
+  criadoEm       DateTime    @default(now())
+
+  itens      ItemEntrada[]
+  lotes      Lote[]
+  movimentos MovimentoEstoque[]
+  contas     ContaPagar[]
+
+  @@index([data])
+}
+
+model ItemEntrada {
+  id            Int            @id @default(autoincrement())
+  entradaId     Int
+  entrada       EntradaEstoque @relation(fields: [entradaId], references: [id], onDelete: Cascade)
+  produtoId     Int
+  produto       Produto        @relation(fields: [produtoId], references: [id])
+  quantidade    Int // milésimos
+  custoUnitario Int // centavos
+  validade      DateTime?
+}
+
+// Livro-razão de estoque: toda variação passa por aqui (quantidade com sinal).
+model MovimentoEstoque {
+  id            Int                  @id @default(autoincrement())
+  produtoId     Int
+  produto       Produto              @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  tipo          TipoMovimentoEstoque
+  quantidade    Int // milésimos, negativo = saída
+  estoqueApos   Int // milésimos, saldo depois do movimento
+  custoUnitario Int? // centavos
+  motivo        String?
+  vendaId       Int?
+  venda         Venda?               @relation(fields: [vendaId], references: [id])
+  entradaId     Int?
+  entrada       EntradaEstoque?      @relation(fields: [entradaId], references: [id])
+  perdaId       Int?                 @unique
+  perda         Perda?               @relation(fields: [perdaId], references: [id])
+  usuarioId     Int?
+  usuario       Usuario?             @relation(fields: [usuarioId], references: [id])
+  criadoEm      DateTime             @default(now())
+
+  @@index([produtoId, criadoEm])
+  @@index([tipo, criadoEm])
+}
+
+model Perda {
+  id            Int         @id @default(autoincrement())
+  produtoId     Int
+  produto       Produto     @relation(fields: [produtoId], references: [id])
+  loteId        Int?
+  lote          Lote?       @relation(fields: [loteId], references: [id])
+  quantidade    Int // milésimos
+  custoUnitario Int // centavos, snapshot do custo no momento
+  valorTotal    Int // centavos = quantidade * custoUnitario / 1000
+  motivo        MotivoPerda
+  observacao    String?
+  data          DateTime    @default(now())
+  usuarioId     Int?
+  usuario       Usuario?    @relation(fields: [usuarioId], references: [id])
+  criadoEm      DateTime    @default(now())
+
+  movimento MovimentoEstoque?
+
+  @@index([data])
+  @@index([produtoId])
+}
+
+// ---------------------------------------------------------------- clientes
+
+model Cliente {
+  id             Int       @id @default(autoincrement())
+  nome           String
+  cpf            String?   @unique
+  telefone       String?
+  email          String?
+  endereco       String?
+  dataNascimento DateTime?
+  limiteFiado    Int       @default(0) // centavos; 0 = não compra fiado
+  observacao     String?
+  ativo          Boolean   @default(true)
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  vendas           Venda[]
+  lancamentosFiado LancamentoFiado[]
+
+  @@index([nome])
+}
+
+// Saldo devedor do cliente = soma(DEBITO) - soma(PAGAMENTO) - soma(ESTORNO).
+// ESTORNO = cancelamento de venda fiado (nunca entra no caixa nem em "fiado recebido").
+model LancamentoFiado {
+  id             Int                 @id @default(autoincrement())
+  clienteId      Int
+  cliente        Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tipo           TipoLancamentoFiado
+  valor          Int // centavos, sempre positivo
+  vendaId        Int?
+  venda          Venda?              @relation(fields: [vendaId], references: [id])
+  formaPagamento FormaPagamento? // como o cliente pagou (só em PAGAMENTO; null em ESTORNO e ajuste manual)
+  sessaoId       Int? // sessão de caixa que recebeu o pagamento
+  sessao         SessaoCaixa?        @relation(fields: [sessaoId], references: [id])
+  observacao     String?
+  usuarioId      Int?
+  usuario        Usuario?            @relation(fields: [usuarioId], references: [id])
+  criadoEm       DateTime            @default(now())
+
+  @@index([clienteId, criadoEm])
+}
+
+// ---------------------------------------------------------------- caixa
+
+model SessaoCaixa {
+  id                      Int         @id @default(autoincrement())
+  status                  StatusCaixa @default(ABERTO)
+  usuarioAberturaId       Int
+  usuarioAbertura         Usuario     @relation("SessoesAbertasPor", fields: [usuarioAberturaId], references: [id])
+  usuarioFechamentoId     Int?
+  usuarioFechamento       Usuario?    @relation("SessoesFechadasPor", fields: [usuarioFechamentoId], references: [id])
+  abertoEm                DateTime    @default(now())
+  fechadoEm               DateTime?
+  valorAbertura           Int // centavos (fundo de troco)
+  valorFechamentoEsperado Int? // centavos, calculado no fechamento
+  valorFechamentoContado  Int? // centavos, informado pelo operador
+  diferenca               Int? // contado - esperado
+  observacao              String? // observação da abertura
+  observacaoFechamento    String?
+
+  movimentos        MovimentoCaixa[]
+  vendas            Venda[]
+  despesas          Despesa[]
+  recebimentosFiado LancamentoFiado[]
+
+  @@index([status])
+  @@index([abertoEm])
+}
+
+model MovimentoCaixa {
+  id        Int                @id @default(autoincrement())
+  sessaoId  Int
+  sessao    SessaoCaixa        @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+  tipo      TipoMovimentoCaixa
+  valor     Int // centavos, positivo
+  motivo    String?
+  usuarioId Int?
+  usuario   Usuario?           @relation(fields: [usuarioId], references: [id])
+  criadoEm  DateTime           @default(now())
+
+  @@index([sessaoId])
+}
+
+// ---------------------------------------------------------------- vendas
+
+model Venda {
+  id                 Int          @id @default(autoincrement())
+  numero             Int          @unique // número sequencial do cupom
+  status             StatusVenda  @default(CONCLUIDA)
+  sessaoId           Int?
+  sessao             SessaoCaixa? @relation(fields: [sessaoId], references: [id])
+  usuarioId          Int
+  usuario            Usuario      @relation("VendasDoUsuario", fields: [usuarioId], references: [id])
+  clienteId          Int?
+  cliente            Cliente?     @relation(fields: [clienteId], references: [id])
+  subtotal           Int // centavos, soma dos itens antes do desconto geral
+  desconto           Int          @default(0) // centavos, desconto geral
+  total              Int // centavos = subtotal - desconto
+  custoTotal         Int // centavos, CMV snapshot (soma quantidade*custoUnitario)
+  taxasTotal         Int          @default(0) // centavos, soma das taxas dos pagamentos
+  observacao         String?
+  canceladaEm        DateTime?
+  motivoCancelamento String?
+  canceladaPorId     Int?
+  canceladaPor       Usuario?     @relation("VendasCanceladasPor", fields: [canceladaPorId], references: [id])
+  criadoEm           DateTime     @default(now())
+
+  itens            ItemVenda[]
+  pagamentos       Pagamento[]
+  movimentos       MovimentoEstoque[]
+  lancamentosFiado LancamentoFiado[]
+
+  @@index([criadoEm])
+  @@index([sessaoId])
+  @@index([status, criadoEm])
+}
+
+model ItemVenda {
+  id            Int     @id @default(autoincrement())
+  vendaId       Int
+  venda         Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produtoId     Int
+  produto       Produto @relation(fields: [produtoId], references: [id])
+  descricao     String // snapshot do nome
+  unidade       Unidade
+  quantidade    Int // milésimos
+  precoUnitario Int // centavos, preço praticado (já considera promoção)
+  custoUnitario Int // centavos, custo médio no momento
+  desconto      Int     @default(0) // centavos, desconto no item
+  total         Int // centavos = quantidade*precoUnitario/1000 - desconto
+  loteId        Int?
+  lote          Lote?   @relation(fields: [loteId], references: [id])
+
+  @@index([produtoId])
+  @@index([vendaId])
+}
+
+model Pagamento {
+  id                Int                @id @default(autoincrement())
+  vendaId           Int
+  venda             Venda              @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  forma             FormaPagamento
+  valor             Int // centavos, valor que quita a venda
+  valorRecebido     Int? // centavos, só DINHEIRO (o que o cliente entregou)
+  troco             Int                @default(0) // centavos, só DINHEIRO
+  parcelas          Int                @default(1)
+  taxaPercentual    Int                @default(0) // pontos-base, snapshot da config
+  taxaFixa          Int                @default(0) // centavos, snapshot da config
+  taxaValor         Int                @default(0) // centavos, taxa calculada
+  maquininhaId      Int? // em qual maquininha o cartão/pix passou
+  maquininha        Maquininha?        @relation(fields: [maquininhaId], references: [id])
+  nsu               String? // NSU / doc do comprovante, pra conciliação
+  autorizacao       String? // código de autorização do comprovante
+  mpPaymentIntentId String?
+  mpPaymentId       String?
+  mpStatus          StatusPagamentoMP?
+  criadoEm          DateTime           @default(now())
+
+  @@index([forma, criadoEm])
+}
+
+// Taxas por forma de pagamento (entram no lucro real).
+model ConfiguracaoPagamento {
+  forma                FormaPagamento @id
+  ativo                Boolean        @default(true)
+  taxaPercentual       Int            @default(0) // pontos-base
+  taxaFixa             Int            @default(0) // centavos
+  prazoRecebimentoDias Int            @default(0)
+  maxParcelas          Int            @default(1)
+}
+
+// Maquininhas do mercado (InfinitePay, Sipag, ...). Cada uma tem as próprias
+// taxas e prazos; o pagamento em cartão registra em qual passou.
+model Maquininha {
+  id                   Int      @id @default(autoincrement())
+  nome                 String // "InfinitePay (Gustavo)", "Sipag"
+  adquirente           String? // InfinitePay, Sipag, Stone, Mercado Pago...
+  ativo                Boolean  @default(true)
+  padrao               Boolean  @default(false) // pré-selecionada no PDV
+  taxaDebito           Int      @default(0) // pontos-base
+  taxaCredito          Int      @default(0) // pontos-base, à vista
+  taxaCreditoParcelado Int      @default(0) // pontos-base, 2x ou mais
+  taxaPix              Int      @default(0) // pontos-base (se o Pix passar pela maquininha)
+  prazoDebitoDias      Int      @default(1)
+  prazoCreditoDias     Int      @default(30)
+  prazoPixDias         Int      @default(0)
+  observacao           String?
+  criadoEm             DateTime @default(now())
+
+  pagamentos Pagamento[]
+}
+
+// ---------------------------------------------------------------- financeiro
+
+model CategoriaDespesa {
+  id       Int          @id @default(autoincrement())
+  nome     String       @unique
+  despesas Despesa[]
+  contas   ContaPagar[]
+}
+
+model Despesa {
+  id             Int               @id @default(autoincrement())
+  descricao      String
+  categoriaId    Int?
+  categoria      CategoriaDespesa? @relation(fields: [categoriaId], references: [id])
+  fornecedorId   Int?
+  fornecedor     Fornecedor?       @relation(fields: [fornecedorId], references: [id])
+  valor          Int // centavos
+  data           DateTime          @default(now())
+  formaPagamento FormaPagamento?
+  pagoDoCaixa    Boolean           @default(false) // saiu do dinheiro do caixa aberto
+  sessaoId       Int?
+  sessao         SessaoCaixa?      @relation(fields: [sessaoId], references: [id])
+  contaPagarId   Int?              @unique
+  contaPagar     ContaPagar?       @relation(fields: [contaPagarId], references: [id])
+  observacao     String?
+  usuarioId      Int?
+  usuario        Usuario?          @relation(fields: [usuarioId], references: [id])
+  criadoEm       DateTime          @default(now())
+
+  @@index([data])
+  @@index([categoriaId])
+}
+
+// Boletos e contas a pagar. Quando paga, gera uma Despesa vinculada.
+model ContaPagar {
+  id             Int               @id @default(autoincrement())
+  descricao      String
+  fornecedorId   Int?
+  fornecedor     Fornecedor?       @relation(fields: [fornecedorId], references: [id])
+  categoriaId    Int?
+  categoria      CategoriaDespesa? @relation(fields: [categoriaId], references: [id])
+  valor          Int // centavos
+  vencimento     DateTime
+  status         StatusConta       @default(PENDENTE)
+  dataPagamento  DateTime?
+  valorPago      Int? // centavos (pode ter juros/desconto)
+  formaPagamento FormaPagamento?
+  linhaDigitavel String? // código de barras do boleto
+  recorrencia    Recorrencia?
+  diaVencimento  Int? // dia original da recorrência (31 vira 28/29/30 quando o mês não tem)
+  parcelaAtual   Int?
+  totalParcelas  Int?
+  entradaId      Int?
+  entrada        EntradaEstoque?   @relation(fields: [entradaId], references: [id])
+  observacao     String?
+  criadoEm       DateTime          @default(now())
+
+  despesa Despesa?
+
+  @@index([vencimento])
+  @@index([status, vencimento])
+}
+
+// ---------------------------------------------------------------- configuração
+
+// Linha única (id = 1).
+model Configuracao {
+  id                       Int      @id @default(1)
+  nomeLoja                 String   @default("Uay Market")
+  cnpj                     String?
+  endereco                 String?
+  telefone                 String?
+  mensagemCupom            String?
+  // Pix estático (gera QR/copia-e-cola sem API)
+  pixChave                 String?
+  pixNomeRecebedor         String?
+  pixCidade                String?
+  // Mercado Pago Point
+  mpAccessToken            String?
+  mpDeviceId               String?
+  mpUserId                 String?
+  // Metas e alertas
+  metaVendasDiaria         Int? // centavos
+  metaVendasMensal         Int? // centavos
+  alertaVencimentoDias     Int      @default(7)
+  permitirVendaSemEstoque  Boolean  @default(true)
+  permitirDescontoOperador Boolean  @default(true)
+  descontoMaximoPercentual Int      @default(1000) // pontos-base (10%)
+  atualizadoEm             DateTime @updatedAt
+}
+
+model Auditoria {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+  acao       String // ex: "venda.cancelar", "produto.editar"
+  entidade   String
+  entidadeId Int?
+  detalhes   String? // JSON serializado
+  criadoEm   DateTime @default(now())
+
+  @@index([criadoEm])
+  @@index([entidade, entidadeId])
+}

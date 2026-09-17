@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { obterSessao } from "@/lib/auth";
 import { agora } from "@/lib/datas";
 import { exportarBackup } from "@/lib/servicos/backup";
-import { nomeArquivoBackup } from "@/lib/servicos/backup-calculos";
+import { nomeArquivoBackup, serializarBackupEmPartes } from "@/lib/servicos/backup-calculos";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
  * GET /api/backup: exporta todas as tabelas em JSON e devolve como download
  * uay-market-AAAAMMDD-HHMM.json. Só administrador (o middleware garante login;
  * o papel é conferido aqui porque /api não está na lista de rotas só-admin).
+ * O corpo sai como stream, uma tabela por pedaço: no Vercel, resposta montada
+ * de uma vez tem teto de 4,5 MB e um banco com anos de vendas passa disso.
  */
 export async function GET() {
   const sessao = await obterSessao();
@@ -21,12 +23,19 @@ export async function GET() {
   try {
     const arquivo = await exportarBackup(sessao.usuarioId);
     const nome = nomeArquivoBackup(agora());
-    const corpo = JSON.stringify(arquivo);
+    const partes = serializarBackupEmPartes(arquivo);
+    const codificador = new TextEncoder();
+    const corpo = new ReadableStream<Uint8Array>({
+      pull(controlador) {
+        const parte = partes.shift();
+        if (parte === undefined) controlador.close();
+        else controlador.enqueue(codificador.encode(parte));
+      },
+    });
     return new NextResponse(corpo, {
       status: 200,
       headers: {
         "Content-Type": "application/json; charset=utf-8",
-        "Content-Length": String(Buffer.byteLength(corpo, "utf8")),
         "Content-Disposition": `attachment; filename="${nome}"`,
         "Cache-Control": "no-store",
         "X-Backup-Nome": nome,

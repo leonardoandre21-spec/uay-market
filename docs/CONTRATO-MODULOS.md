@@ -5,7 +5,8 @@ Leia inteiro antes de escrever código. Este documento define o que já existe, 
 ## Stack
 
 - Next.js 15.5 (App Router, Turbopack), React 19, TypeScript estrito, Tailwind 4.
-- Prisma 6 + SQLite (`prisma/dev.db`). O schema em `prisma/schema.prisma` é **congelado** (migração 2 `maquininhas_e_ajustes` aplicada em 16/09: Maquininha, Pagamento.maquininhaId/nsu/autorizacao, TipoLancamentoFiado.ESTORNO, EntradaEstoque.estornadaEm/estornadaPorId, SessaoCaixa.observacaoFechamento, ContaPagar.diaVencimento, Usuario.ultimoAcesso): nenhum módulo altera, cria migração ou roda `prisma migrate`. Se faltar campo, escreva a necessidade no relatório final e contorne.
+- Prisma 6 + Postgres (Neon em produção, via `DATABASE_URL` pooled + `DATABASE_URL_UNPOOLED` direta, nomes que a integração Neon/Vercel cria; Postgres embutido em `localhost:5433` no desenvolvimento, `npm run db:local`). Até 16/09 era SQLite; a migração inicial foi regerada pra Postgres em 17/09. O schema em `prisma/schema.prisma` é **congelado** (já inclui Maquininha, Pagamento.maquininhaId/nsu/autorizacao, TipoLancamentoFiado.ESTORNO, EntradaEstoque.estornadaEm/estornadaPorId, SessaoCaixa.observacaoFechamento, ContaPagar.diaVencimento, Usuario.ultimoAcesso): nenhum módulo altera, cria migração ou roda `prisma migrate`. Se faltar campo, escreva a necessidade no relatório final e contorne.
+- Postgres diferencia maiúsculas em `contains`/`startsWith`: toda busca por texto digitado usa `mode: "insensitive"` (já aplicado em `buscarProdutosPorNome`, produtos, fornecedores e vendas). Sem disco persistente no Vercel: nada grava em pasta; backup é exportar/importar JSON (`lib/servicos/backup.ts`).
 - Server Actions pra escrita; Server Components pra leitura. Route Handlers (`app/api/**`) só quando precisa de polling/download.
 - Zod 4 pra validar entrada (`import { z } from "zod"`).
 - Ícones: `lucide-react`. Gráficos: `recharts` (só em Client Components). QR: `qrcode` (já instalado).

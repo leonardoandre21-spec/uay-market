@@ -1,17 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  backupDesatualizado,
-  backupsExcedentes,
-  caminhoParaSql,
   celulaCsv,
-  ehBackupAutomaticoOuManual,
   formatarTamanho,
-  gerarNomeBackup,
-  gerarNomeRestauracao,
   lerContentLength,
-  MANTER_BACKUPS,
-  MANTER_RESTAURACOES,
-  nomeBackupValido,
   pinValido,
   podeDesativarAdmin,
   TAMANHO_MAXIMO_RESTAURACAO,
@@ -66,96 +57,11 @@ describe("podeDesativarAdmin (regra do último administrador)", () => {
   });
 });
 
-describe("nomeBackupValido (proteção contra path traversal)", () => {
-  it("aceita os nomes que o sistema gera", () => {
-    expect(nomeBackupValido("uay-market-20260916-1430.db")).toBe(true);
-    expect(nomeBackupValido("restaurar-20260916-143005.db")).toBe(true);
-    expect(nomeBackupValido("copia_manual.db")).toBe(true);
-  });
-  it("rejeita barras, pontos duplos, extensões erradas e vazio", () => {
-    expect(nomeBackupValido("../prisma/dev.db")).toBe(false);
-    expect(nomeBackupValido("..\\dev.db")).toBe(false);
-    expect(nomeBackupValido("pasta/arquivo.db")).toBe(false);
-    expect(nomeBackupValido("arquivo.sqlite")).toBe(false);
-    expect(nomeBackupValido("arquivo.db.exe")).toBe(false);
-    expect(nomeBackupValido(".db")).toBe(false);
-    expect(nomeBackupValido("")).toBe(false);
-    expect(nomeBackupValido("com espaço.db")).toBe(false);
-    expect(nomeBackupValido("a".repeat(81) + ".db")).toBe(false);
-  });
-  it("nomes gerados passam na validação e identificam o tipo", () => {
-    const data = new Date("2026-09-16T17:30:05Z"); // 14:30:05 em São Paulo
-    expect(gerarNomeBackup(data)).toBe("uay-market-20260916-1430.db");
-    expect(gerarNomeRestauracao(data)).toBe("restaurar-20260916-143005.db");
-    expect(nomeBackupValido(gerarNomeBackup(data))).toBe(true);
-    expect(nomeBackupValido(gerarNomeRestauracao(data))).toBe(true);
-    expect(ehBackupAutomaticoOuManual(gerarNomeBackup(data))).toBe(true);
-    expect(ehBackupAutomaticoOuManual(gerarNomeRestauracao(data))).toBe(false);
-  });
-});
-
-describe("backup automático e utilidades de disco", () => {
-  it("precisa de backup quando não há nenhum ou o último passou de 24h", () => {
-    const agora = new Date("2026-09-16T12:00:00Z");
-    expect(backupDesatualizado(null, agora)).toBe(true);
-    expect(backupDesatualizado(new Date("2026-09-15T11:59:00Z"), agora)).toBe(true);
-    expect(backupDesatualizado(new Date("2026-09-15T12:01:00Z"), agora)).toBe(false);
-    expect(backupDesatualizado(new Date("2026-09-16T11:00:00Z"), agora)).toBe(false);
-  });
-  it("prepara caminho Windows pro VACUUM INTO", () => {
-    expect(caminhoParaSql("C:\\Users\\dono\\uay-market\\backups\\a.db")).toBe("C:/Users/dono/uay-market/backups/a.db");
-    expect(caminhoParaSql("/home/o'brien/b.db")).toBe("/home/o''brien/b.db");
-  });
+describe("formatarTamanho", () => {
   it("formata tamanhos", () => {
     expect(formatarTamanho(500)).toBe("500 B");
     expect(formatarTamanho(2048)).toBe("2 KB");
     expect(formatarTamanho(1536 * 1024)).toBe("1,5 MB");
-  });
-});
-
-describe("limpeza de backups excedentes", () => {
-  const nomeBackup = (dia: number, hora = "1430") => `uay-market-202609${String(dia).padStart(2, "0")}-${hora}.db`;
-  const nomeRestauracao = (dia: number) => `restaurar-202609${String(dia).padStart(2, "0")}-143005.db`;
-
-  it("não apaga nada enquanto a cota não estoura", () => {
-    const nomes = [nomeBackup(1), nomeBackup(2), nomeBackup(3)];
-    expect(backupsExcedentes(nomes, 3, 5)).toEqual([]);
-    expect(backupsExcedentes([], 3, 5)).toEqual([]);
-  });
-
-  it("apaga os mais antigos além da cota, do mais antigo pro mais novo, e mantém os N recentes", () => {
-    // Embaralhado de propósito: a ordem vem do nome (data), não da posição na lista.
-    const nomes = [nomeBackup(5), nomeBackup(1), nomeBackup(3, "0900"), nomeBackup(3, "1800"), nomeBackup(2)];
-    expect(backupsExcedentes(nomes, 2, 5)).toEqual([nomeBackup(1), nomeBackup(2), nomeBackup(3, "0900")]);
-    expect(backupsExcedentes(nomes, 4, 5)).toEqual([nomeBackup(1)]);
-  });
-
-  it("uploads de restauração têm cota própria e não contam na cota dos backups", () => {
-    const nomes = [nomeBackup(1), nomeBackup(2), nomeRestauracao(1), nomeRestauracao(2), nomeRestauracao(3)];
-    expect(backupsExcedentes(nomes, 2, 2)).toEqual([nomeRestauracao(1)]);
-    expect(backupsExcedentes(nomes, 1, 1)).toEqual([nomeBackup(1), nomeRestauracao(1), nomeRestauracao(2)]);
-  });
-
-  it("nunca toca em cópias com outro nome nem nos auto-*.db do iniciar.bat", () => {
-    const nomes = [
-      "copia_manual.db",
-      "auto-2026-09-01.db",
-      "uay-market-backup.db",
-      "uay-market-20260901-1430.db.bak",
-      "restaurar-antigo.db",
-      nomeBackup(1),
-      nomeBackup(2),
-    ];
-    expect(backupsExcedentes(nomes, 1, 0)).toEqual([nomeBackup(1)]);
-    expect(backupsExcedentes(nomes, 0, 0)).toEqual([nomeBackup(1), nomeBackup(2)]);
-  });
-
-  it("os nomes gerados pelo sistema entram na limpeza e as cotas são razoáveis", () => {
-    const data = new Date("2026-09-16T17:30:05Z");
-    expect(backupsExcedentes([gerarNomeBackup(data)], 0, 0)).toEqual([gerarNomeBackup(data)]);
-    expect(backupsExcedentes([gerarNomeRestauracao(data)], 0, 0)).toEqual([gerarNomeRestauracao(data)]);
-    expect(MANTER_BACKUPS).toBeGreaterThanOrEqual(7);
-    expect(MANTER_RESTAURACOES).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -179,12 +85,12 @@ describe("limite do arquivo de restauração", () => {
     expect(lerContentLength("1".repeat(16))).toBeNull();
   });
 
-  it("um vídeo de 1,5 GB renomeado pra .db é barrado pelo cabeçalho antes de ler o corpo", () => {
+  it("um vídeo de 1,5 GB renomeado pra .json é barrado pelo cabeçalho antes de ler o corpo", () => {
     const tamanho = lerContentLength(String(1.5 * 1024 * 1024 * 1024));
     expect(tamanho).not.toBeNull();
     expect(tamanho! > TAMANHO_MAXIMO_RESTAURACAO).toBe(true);
-    // Um banco de 300 KB dentro do multipart passa folgado.
-    expect(lerContentLength("310000")! <= TAMANHO_MAXIMO_RESTAURACAO).toBe(true);
+    // Um backup de 3 MB dentro do multipart passa folgado.
+    expect(lerContentLength("3100000")! <= TAMANHO_MAXIMO_RESTAURACAO).toBe(true);
   });
 });
 

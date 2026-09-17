@@ -263,6 +263,27 @@ export function montarSqlReset(tabela: string): string {
   return `SELECT setval(pg_get_serial_sequence('"${tabela}"', 'id'), COALESCE((SELECT MAX("id") FROM "${tabela}"), 0) + 1, false)`;
 }
 
+// ---------------------------------------------------------------- serialização
+
+/**
+ * O JSON do backup em pedaços (cabeçalho, uma tabela por pedaço, fechamento),
+ * pra rota devolver como stream. No Vercel uma resposta montada de uma vez tem
+ * teto de 4,5 MB; a streamada não. `partes.join("")` é um JSON válido igual a
+ * `JSON.stringify(arquivo)`.
+ */
+export function serializarBackupEmPartes(arquivo: ArquivoBackup): string[] {
+  const partes: string[] = [
+    `{"formato":${JSON.stringify(arquivo.formato)},"versao":${JSON.stringify(arquivo.versao)},"geradoEm":${JSON.stringify(arquivo.geradoEm)},"tabelas":{`,
+  ];
+  let primeira = true;
+  for (const [nome, linhas] of Object.entries(arquivo.tabelas)) {
+    partes.push(`${primeira ? "" : ","}${JSON.stringify(nome)}:${JSON.stringify(linhas)}`);
+    primeira = false;
+  }
+  partes.push("}}");
+  return partes;
+}
+
 // ---------------------------------------------------------------- contagens
 
 /** Total de linhas por tabela, na ordem dada. */

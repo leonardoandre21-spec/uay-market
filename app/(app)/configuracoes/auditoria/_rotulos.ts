@@ -17,9 +17,13 @@ const ROTULO_ACAO: Record<string, string> = {
   "maquininha.editar": "Editou maquininha",
   "maquininha.excluir": "Excluiu maquininha",
   "configuracao.metas": "Alterou metas e regras",
+  "backup.exportar": "Baixou backup (.json)",
+  "backup.importar": "Restaurou backup de arquivo",
+  // Ações do backup em disco (antes de 17/09/2026); ficam pra ler o histórico antigo.
   "backup.gerar": "Gerou backup",
   "backup.automatico": "Backup automático",
   "backup.baixar": "Baixou backup",
+  "backup.limpar": "Apagou backups antigos",
   "backup.restaurar-validar": "Enviou arquivo pra restaurar",
   "auditoria.exportar": "Exportou auditoria",
   // PDV e vendas

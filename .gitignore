@@ -41,10 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 # banco SQLite local e backups
-/prisma/*.db
-/prisma/*.db-journal
-/prisma/*.db-shm
-/prisma/*.db-wal
 /backups/
 !.env.example
 

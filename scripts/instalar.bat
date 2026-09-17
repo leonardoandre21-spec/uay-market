@@ -4,7 +4,7 @@ title Uay Market - Instalacao
 cd /d "%~dp0.."
 
 echo ==============================================
-echo   Uay Market - Instalacao no PC do mercado
+echo   Uay Market - Instalacao em servidor proprio
 echo ==============================================
 echo.
 
@@ -33,20 +33,6 @@ node -v
 if "%NODE_MAJOR%"=="" goto node_antigo
 if %NODE_MAJOR% LSS 20 goto node_antigo
 
-REM Banco ja existente: atualizacao (mantem) ou copia da pasta de outra maquina (dados de teste).
-if not exist "prisma\dev.db" goto banco_ok
-echo.
-echo [ATENCAO] Ja existe um banco de dados em prisma\dev.db.
-echo   - Se este PC ja usa o Uay Market e voce esta atualizando, responda S: os dados ficam.
-echo   - Se e uma instalacao nova e o banco veio junto na copia da pasta ^(dados de teste^),
-echo     responda N: esse banco e guardado de lado e o sistema comeca vazio.
-choice /c SN /n /m "Manter o banco existente? [S/N] "
-if errorlevel 2 (
-  for /f %%d in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set CARIMBO=%%d
-  call :guardar_banco
-)
-:banco_ok
-
 echo.
 echo Conferindo o arquivo .env...
 node scripts\segredo-env.mjs
@@ -57,6 +43,15 @@ if not errorlevel 1 (
   pause
   exit /b 1
 )
+
+echo.
+echo [AVISO] Este script e para rodar o sistema num servidor proprio.
+echo Ele precisa de um Postgres acessivel em DATABASE_URL/DATABASE_URL_UNPOOLED no .env
+echo (a instalacao oficial e no Vercel + Neon, veja o README).
+echo Se o .env ainda aponta para localhost:5433, suba o Postgres local antes
+echo (npm run db:local) ou edite as duas URLs.
+echo.
+pause
 
 echo.
 echo Instalando dependencias (pode levar alguns minutos)...
@@ -84,13 +79,6 @@ echo   Pra abrir o sistema, use o arquivo scripts\iniciar.bat
 echo   Login inicial: Administrador, PIN 1234 (troque em Configuracoes)
 echo ==============================================
 pause
-exit /b 0
-
-:guardar_banco
-if "%CARIMBO%"=="" set CARIMBO=antigo
-move /y "prisma\dev.db" "prisma\dev-guardado-%CARIMBO%.db" >nul
-if exist "prisma\dev.db-journal" del /q "prisma\dev.db-journal"
-echo Banco anterior guardado em prisma\dev-guardado-%CARIMBO%.db
 exit /b 0
 
 :node_antigo

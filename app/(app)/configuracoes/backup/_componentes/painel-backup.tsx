@@ -10,6 +10,7 @@ import { Campo, Entrada } from "@/components/ui/campo";
 import { GradeIndicadores } from "@/components/ui/pagina";
 import { Tabela, Tbody, Td, Th, Thead, Tr } from "@/components/ui/tabela";
 import { useToast } from "@/components/ui/toast";
+import { sair } from "@/app/(auth)/login/actions";
 import { formatarTamanho, TAMANHO_MAXIMO_RESTAURACAO } from "@/lib/servicos/configuracoes-regras";
 
 const LIMITE_RESTAURACAO_MB = Math.round(TAMANHO_MAXIMO_RESTAURACAO / (1024 * 1024));
@@ -232,9 +233,11 @@ export function PainelBackup({
                   Os dados foram substituídos ({totalLinhas.toLocaleString("pt-BR")} registros). Os usuários e PINs
                   agora são os do arquivo, então a sua sessão pode não valer mais.
                 </p>
-                <a href="/sair" className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold underline">
-                  <LogOut className="size-4" aria-hidden /> Sair do sistema agora
-                </a>
+                <form action={sair} className="mt-2">
+                  <button type="submit" className="inline-flex items-center gap-1.5 text-sm font-semibold underline">
+                    <LogOut className="size-4" aria-hidden /> Sair do sistema agora
+                  </button>
+                </form>
               </Aviso>
               <Tabela>
                 <Thead>

@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { exigirAdminAcao } from "@/lib/auth";
-import { campo, campoBooleano, campoInteiro, campoOpcional, executar, type Resultado } from "@/lib/acao";
+import { campo, campoBooleano, campoInteiro, campoOpcional, executar, type Resultado, lerMoeda } from "@/lib/acao";
 import { parseDataInput, parseMesInput } from "@/lib/datas";
-import { lerMoeda } from "@/components/ui/entrada-moeda";
 import {
   atualizarDespesa,
   criarCategoriaDespesa,

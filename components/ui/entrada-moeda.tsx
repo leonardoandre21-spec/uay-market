@@ -39,7 +39,8 @@ export function EntradaMoeda({
   );
 }
 
-/** Lê o valor de um EntradaMoeda a partir do FormData (centavos ou null). */
+/** Lê o valor de um EntradaMoeda a partir do FormData (centavos ou null).
+ * Só pra Client Components: em server actions use lerMoeda de "@/lib/acao". */
 export function lerMoeda(form: FormData, nome: string): number | null {
   const v = form.get(nome);
   return typeof v === "string" ? parseReais(v) : null;

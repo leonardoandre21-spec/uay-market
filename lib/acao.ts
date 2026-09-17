@@ -2,6 +2,7 @@
 // devolva { ok: false, erro } com mensagem legível em português.
 
 import { ZodError } from "zod";
+import { parseReais } from "@/lib/dinheiro";
 
 export type Resultado<T = undefined> =
   | { ok: true; dados: T }
@@ -109,4 +110,10 @@ export function campoInteiro(form: FormData, nome: string): number | null {
 export function campoBooleano(form: FormData, nome: string): boolean {
   const v = form.get(nome);
   return v === "on" || v === "true" || v === "1";
+}
+
+/** Lê um campo de dinheiro (EntradaMoeda envia "12,50") como centavos, ou null. Seguro em server actions. */
+export function lerMoeda(form: FormData, nome: string): number | null {
+  const v = form.get(nome);
+  return typeof v === "string" ? parseReais(v) : null;
 }

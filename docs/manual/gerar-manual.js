@@ -70,7 +70,7 @@ const conteudo = [
   P("O Uay Market é o sistema que controla o mercado inteiro: o caixa (com o leitor de código de barras), o estoque com validade, os clientes que compram fiado, as despesas e os boletos, e os relatórios que mostram quanto o mercado realmente lucra depois de descontar custo das mercadorias, taxas de cartão, perdas e despesas."),
   P("Ele funciona pela internet: abre no navegador, pelo endereço do mercado, em qualquer computador ou celular conectado. Os dados ficam guardados na nuvem (no serviço Neon), que mantém o histórico e permite voltar o banco pra um momento anterior; mesmo assim, o backup semanal (capítulo 11) continua sendo a parte mais importante deste manual."),
   H2("Abrir o sistema"),
-  N("Abra o Chrome (ou outro navegador) e digite o endereço do mercado na barra de endereço. Salve nos favoritos ou crie um atalho na área de trabalho pra abrir com um clique."),
+  N("Abra o Chrome (ou outro navegador) e digite o endereço do mercado na barra de endereço: www.uaymarket.com.br (enquanto o domínio não estiver ativo, use uay-market.vercel.app). Salve nos favoritos ou crie um atalho na área de trabalho pra abrir com um clique."),
   N("Escolha seu nome na tela de entrada e digite seu PIN (4 a 8 números). Cada pessoa tem um PIN diferente; o sistema não deixa dois usuários com o mesmo."),
   DICA("No computador do caixa, abra o sistema em tela cheia (F11) e deixe a aba fixa. No celular, use \"Adicionar à tela inicial\" pra ele abrir como um aplicativo."),
   NOTA("O caixa precisa de internet. Se a internet do mercado cair, ligue o roteador do celular (4G) e conecte o computador nele até a conexão voltar. Nenhum dado se perde: tudo que já foi registrado está na nuvem."),

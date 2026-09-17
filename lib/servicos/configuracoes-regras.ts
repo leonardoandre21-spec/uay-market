@@ -1,9 +1,7 @@
 // Regras puras do módulo de configurações (sem banco, sem Next). Tudo aqui
 // tem teste em tests/configuracoes.test.ts.
 
-import { format } from "date-fns";
 import type { Papel } from "@prisma/client";
-import { noFuso } from "@/lib/datas";
 
 // ---------------------------------------------------------------- PIN
 
@@ -31,74 +29,11 @@ export function podeDesativarAdmin(lista: UsuarioResumo[], id: number): boolean 
   return lista.some((u) => u.id !== id && u.papel === "ADMIN" && u.ativo);
 }
 
-// ---------------------------------------------------------------- backups
-
-/** Nome de arquivo de backup seguro: letras, números, hífen e sublinhado, terminando em .db. */
-const REGEX_NOME_BACKUP = /^[A-Za-z0-9_-]{1,80}\.db$/;
-
-/** Rejeita qualquer tentativa de sair da pasta backups/ (barras, "..", extensões estranhas). */
-export function nomeBackupValido(nome: string): boolean {
-  return REGEX_NOME_BACKUP.test(nome);
-}
-
-export const PREFIXO_BACKUP = "uay-market-";
-export const PREFIXO_RESTAURACAO = "restaurar-";
-
-/** "uay-market-20260916-1430.db" (horário do mercado). */
-export function gerarNomeBackup(data: Date): string {
-  return `${PREFIXO_BACKUP}${format(noFuso(data), "yyyyMMdd-HHmm")}.db`;
-}
-
-/** "restaurar-20260916-143005.db" (com segundos, pra não colidir em uploads seguidos). */
-export function gerarNomeRestauracao(data: Date): string {
-  return `${PREFIXO_RESTAURACAO}${format(noFuso(data), "yyyyMMdd-HHmmss")}.db`;
-}
-
-export function ehBackupAutomaticoOuManual(nome: string): boolean {
-  return nome.startsWith(PREFIXO_BACKUP);
-}
-
-/** Backup automático é necessário quando não existe nenhum ou o último tem mais de `horas` horas. */
-export function backupDesatualizado(ultimo: Date | null, agora: Date, horas = 24): boolean {
-  if (!ultimo) return true;
-  return agora.getTime() - ultimo.getTime() > horas * 60 * 60 * 1000;
-}
-
-/** Quantos backups gerados pelo sistema (`uay-market-*`) ficam na pasta; os mais antigos são apagados. */
-export const MANTER_BACKUPS = 30;
-/** Quantos arquivos enviados pra restaurar (`restaurar-*`) ficam na pasta. */
-export const MANTER_RESTAURACOES = 5;
-
-// Só os nomes no formato exato que o sistema gera entram na limpeza. Como a data
-// está no nome, a ordem alfabética é a cronológica.
-const REGEX_BACKUP_GERADO = new RegExp(`^${PREFIXO_BACKUP}\\d{8}-\\d{4}\\.db$`);
-const REGEX_RESTAURACAO_GERADA = new RegExp(`^${PREFIXO_RESTAURACAO}\\d{8}-\\d{6}\\.db$`);
-
-function excedentesDoPadrao(nomes: string[], regex: RegExp, manter: number): string[] {
-  const gerados = nomes.filter((n) => regex.test(n)).sort();
-  const sobra = Math.max(0, gerados.length - Math.max(0, manter));
-  return gerados.slice(0, sobra);
-}
+// ---------------------------------------------------------------- restauração de backup
 
 /**
- * Dentre os nomes da pasta backups/, devolve os arquivos gerados pelo sistema
- * que passam da cota, do mais antigo pro mais novo. Cópias com outro nome
- * (ex.: "copia_manual.db" ou os "auto-*.db" do iniciar.bat) nunca entram.
- */
-export function backupsExcedentes(
-  nomes: string[],
-  manterBackups = MANTER_BACKUPS,
-  manterRestauracoes = MANTER_RESTAURACOES,
-): string[] {
-  return [
-    ...excedentesDoPadrao(nomes, REGEX_BACKUP_GERADO, manterBackups),
-    ...excedentesDoPadrao(nomes, REGEX_RESTAURACAO_GERADA, manterRestauracoes),
-  ];
-}
-
-/**
- * Limite do arquivo enviado pra restaurar. O banco de um mercado tem centenas
- * de KB; 200 MB é folga de sobra e cabe na memória sem derrubar o PDV.
+ * Limite do arquivo .json enviado pra restaurar. O backup de um mercado tem
+ * poucos MB; 200 MB é folga de sobra e cabe na memória da função.
  */
 export const TAMANHO_MAXIMO_RESTAURACAO = 200 * 1024 * 1024;
 
@@ -108,11 +43,6 @@ export function lerContentLength(valor: string | null | undefined): number | nul
   const texto = valor.trim();
   if (!/^\d{1,15}$/.test(texto)) return null;
   return Number(texto);
-}
-
-/** Caminho Windows/Unix pronto pra entrar entre aspas simples num comando SQL. */
-export function caminhoParaSql(caminho: string): string {
-  return caminho.replace(/\\/g, "/").replace(/'/g, "''");
 }
 
 /** "1,2 MB", "340 KB". */

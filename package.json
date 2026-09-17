@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build",
     "start": "next start -H 127.0.0.1 -p 3000",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

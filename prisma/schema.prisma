@@ -16,7 +16,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL") // conexão pooled (Neon: host com -pooler)
-  directUrl = env("DIRECT_URL") // conexão direta, usada pelas migrações
+  directUrl = env("DATABASE_URL_UNPOOLED") // conexão direta (migrações); é o nome que a integração Neon/Vercel cria
 }
 
 // ---------------------------------------------------------------- enums

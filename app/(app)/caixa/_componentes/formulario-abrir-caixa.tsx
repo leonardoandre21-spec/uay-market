@@ -83,7 +83,7 @@ export function FormularioAbrirCaixa({
             />
           </Campo>
 
-          <BotaoEnviar tamanho="lg" className="w-full sm:w-auto">
+          <BotaoEnviar tamanho="lg" variante="destaque" className="w-full sm:w-auto">
             <Wallet className="size-5" aria-hidden />
             Abrir caixa e ir para o PDV
           </BotaoEnviar>

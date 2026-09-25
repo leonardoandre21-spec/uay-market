@@ -89,7 +89,7 @@ export function TelaSucesso({
           <p
             className={
               venda.troco > 0
-                ? "mt-1 text-7xl font-bold leading-none tabular text-sucesso"
+                ? "fonte-marca mt-1 text-7xl font-extrabold italic leading-none tabular text-sucesso"
                 : "mt-1 text-5xl font-bold leading-none tabular text-texto-fraco"
             }
           >
@@ -103,10 +103,10 @@ export function TelaSucesso({
             <Printer className="size-5" aria-hidden />
             Imprimir cupom
           </Botao>
-          <Botao tamanho="xl" onClick={aoNovaVenda}>
+          <Botao tamanho="xl" variante="destaque" onClick={aoNovaVenda}>
             <ShoppingCart className="size-5" aria-hidden />
             Nova venda
-            <Tecla className="ml-1 border-primaria-texto/40 bg-transparent text-primaria-texto">Enter</Tecla>
+            <Tecla className="ml-1 border-primaria/40 bg-transparent text-primaria">Enter</Tecla>
           </Botao>
         </div>
         <p className="mt-4 text-xs text-texto-fraco">Pode bipar o próximo produto direto daqui.</p>

@@ -134,9 +134,9 @@ export function Resumo({
         </p>
       </div>
 
-      <div className="rounded-padrao bg-primaria px-4 py-4 text-primaria-texto">
-        <p className="text-xs font-medium uppercase tracking-wider opacity-80">Total a pagar</p>
-        <p className="mt-1 text-5xl font-bold leading-none tabular xl:text-6xl">{formatarReais(totais.total)}</p>
+      <div className="faixas-marca-baixo relative overflow-hidden rounded-padrao bg-primaria px-4 py-4 text-primaria-texto shadow-padrao">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-acento">Total a pagar</p>
+        <p className="fonte-marca mt-1 text-5xl font-extrabold italic leading-none tabular xl:text-6xl">{formatarReais(totais.total)}</p>
         {totais.descontoTotal > 0 ? (
           <p className="mt-2 text-sm opacity-90">Desconto total: {formatarReais(totais.descontoTotal)}</p>
         ) : null}
@@ -153,10 +153,10 @@ export function Resumo({
       ) : null}
 
       <div className="mt-auto">
-        <Botao tamanho="xl" className="w-full text-xl" disabled={!podeFinalizar} onClick={aoFinalizar}>
+        <Botao tamanho="xl" variante="destaque" className="w-full text-xl" disabled={!podeFinalizar} onClick={aoFinalizar}>
           <CheckCircle2 className="size-6" aria-hidden />
           Finalizar venda
-          <Tecla className="ml-1 border-primaria-texto/40 bg-transparent text-primaria-texto">F10</Tecla>
+          <Tecla className="ml-1 border-primaria/40 bg-transparent text-primaria">F10</Tecla>
         </Botao>
       </div>
     </aside>

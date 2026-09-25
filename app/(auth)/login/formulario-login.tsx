@@ -26,11 +26,12 @@ export function FormularioLogin({ usuarios }: { usuarios: { id: number; nome: st
                   key={u.id}
                   type="button"
                   onClick={() => setUsuarioId(u.id)}
+                  aria-pressed={usuarioId === u.id}
                   className={cn(
                     "rounded-padrao border px-3 py-2.5 text-left transition-colors",
                     usuarioId === u.id
-                      ? "border-primaria bg-primaria-suave"
-                      : "border-borda bg-superficie hover:bg-superficie-2",
+                      ? "border-acento bg-acento-suave ring-1 ring-acento"
+                      : "border-borda bg-superficie hover:border-acento/60 hover:bg-superficie-2",
                   )}
                 >
                   <p className="truncate text-sm font-medium text-texto">{u.nome}</p>
@@ -55,7 +56,7 @@ export function FormularioLogin({ usuarios }: { usuarios: { id: number; nome: st
               placeholder="••••"
             />
           </Campo>
-          <BotaoEnviar tamanho="lg" className="w-full">
+          <BotaoEnviar tamanho="lg" variante="destaque" className="w-full">
             Entrar
           </BotaoEnviar>
         </FormularioAcao>

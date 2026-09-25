@@ -1,35 +1,38 @@
 @import "tailwindcss";
 
-/* Tokens de tema do Uay Market. Interface clara (PC do caixa), verde como cor
-   principal, âmbar pra alertas/destaques. Sempre usar os tokens, nunca hex solto. */
+/* Tokens de tema do Uay Market, tirados da logo oficial: azul-marinho #0B1E37
+   e dourado #BC914F sobre fundo claro levemente quente. Sempre usar os tokens,
+   nunca hex solto. Texto dourado em fundo claro usa --acento-texto (contraste AA). */
 :root {
-  --fundo: #f6f7f4;
+  --fundo: #f5f4f0;
   --superficie: #ffffff;
-  --superficie-2: #eef1ea;
-  --borda: #dfe4d9;
-  --texto: #1c2419;
-  --texto-suave: #5b6657;
-  --texto-fraco: #8b9486;
+  --superficie-2: #efede7;
+  --borda: #e3e0d7;
+  --texto: #0b1e37;
+  --texto-suave: #4a5870;
+  --texto-fraco: #8a93a2;
 
-  --primaria: #1f7a4d;
-  --primaria-forte: #175e3b;
-  --primaria-suave: #e3f2ea;
+  --primaria: #0b1e37;
+  --primaria-forte: #06142a;
+  --primaria-suave: #e7ecf3;
   --primaria-texto: #ffffff;
 
-  --acento: #d97706;
-  --acento-suave: #fdf1dc;
+  --acento: #bc914f;
+  --acento-forte: #a47a3c;
+  --acento-suave: #f7efe1;
+  --acento-texto: #83612c;
 
-  --sucesso: #15803d;
-  --sucesso-suave: #dcfce7;
-  --alerta: #b45309;
-  --alerta-suave: #fef3c7;
-  --perigo: #b91c1c;
-  --perigo-suave: #fee2e2;
-  --info: #1d4ed8;
-  --info-suave: #dbeafe;
+  --sucesso: #1e7b4a;
+  --sucesso-suave: #dff3e7;
+  --alerta: #a65f00;
+  --alerta-suave: #fcefd7;
+  --perigo: #b42318;
+  --perigo-suave: #fde4e1;
+  --info: #1f5fad;
+  --info-suave: #e1ecfa;
 
-  --raio: 10px;
-  --sombra: 0 1px 2px rgba(28, 36, 25, 0.06), 0 4px 12px rgba(28, 36, 25, 0.05);
+  --raio: 12px;
+  --sombra: 0 1px 2px rgba(11, 30, 55, 0.06), 0 6px 16px rgba(11, 30, 55, 0.05);
 }
 
 @theme inline {
@@ -45,7 +48,9 @@
   --color-primaria-suave: var(--primaria-suave);
   --color-primaria-texto: var(--primaria-texto);
   --color-acento: var(--acento);
+  --color-acento-forte: var(--acento-forte);
   --color-acento-suave: var(--acento-suave);
+  --color-acento-texto: var(--acento-texto);
   --color-sucesso: var(--sucesso);
   --color-sucesso-suave: var(--sucesso-suave);
   --color-alerta: var(--alerta);
@@ -56,7 +61,8 @@
   --color-info-suave: var(--info-suave);
   --radius-padrao: var(--raio);
   --shadow-padrao: var(--sombra);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--fonte-texto), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-marca: var(--fonte-marca), var(--fonte-texto), system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
 }
 
@@ -70,6 +76,39 @@ body {
   color: var(--texto);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Títulos na fonte da marca (Poppins), como na logo. */
+h1,
+h2,
+.fonte-marca {
+  font-family: var(--font-marca);
+}
+
+/* Faixas diagonais douradas da logo, pra fundos de destaque (login, cabeçalhos). */
+.faixas-marca {
+  background-image:
+    linear-gradient(-9deg, transparent 10%, rgba(188, 145, 79, 0.85) 10.3%, rgba(188, 145, 79, 0.85) 11.4%, transparent 11.7%),
+    linear-gradient(-9deg, transparent 15%, rgba(188, 145, 79, 0.35) 15.2%, rgba(188, 145, 79, 0.35) 15.8%, transparent 16%),
+    linear-gradient(-9deg, transparent 84%, rgba(188, 145, 79, 0.35) 84.2%, rgba(188, 145, 79, 0.35) 84.8%, transparent 85%),
+    linear-gradient(-9deg, transparent 88.5%, rgba(188, 145, 79, 0.85) 88.8%, rgba(188, 145, 79, 0.85) 89.9%, transparent 90.2%);
+}
+
+/* Só as faixas de baixo, pra cartões pequenos com texto no topo. */
+.faixas-marca-baixo {
+  background-image:
+    linear-gradient(-9deg, transparent 78%, rgba(188, 145, 79, 0.35) 78.4%, rgba(188, 145, 79, 0.35) 79.4%, transparent 79.8%),
+    linear-gradient(-9deg, transparent 86%, rgba(188, 145, 79, 0.85) 86.4%, rgba(188, 145, 79, 0.85) 88.4%, transparent 88.8%);
+}
+
+/* Traço dourado inclinado que acompanha títulos de página. */
+.traco-marca {
+  display: block;
+  width: 28px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--acento);
+  transform: skewX(-24deg);
 }
 
 /* Números tabulares em tabelas e valores monetários. */
@@ -91,6 +130,16 @@ textarea::placeholder {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--borda) transparent;
+}
+
+::selection {
+  background: var(--acento-suave);
+  color: var(--texto);
+}
+
+/* Barra lateral escura: rolagem discreta no azul-marinho. */
+.rolagem-escura {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
 
 /* Impressão de cupom 80mm: páginas de cupom usam .cupom e escondem .nao-imprimir */

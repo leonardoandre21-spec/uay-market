@@ -49,7 +49,7 @@ export function Td({
   ...props
 }: React.TdHTMLAttributes<HTMLTableCellElement> & { numerico?: boolean }) {
   return (
-    <td className={cn("px-4 py-2.5 align-middle", numerico && "text-right tabular", className)} {...props}>
+    <td className={cn("px-4 py-2.5 align-middle", numerico && "text-right tabular whitespace-nowrap", className)} {...props}>
       {children}
     </td>
   );

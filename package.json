@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "instalar": "npm install && prisma migrate deploy && npm run db:seed",
     "postinstall": "prisma generate",
-    "db:local": "node scripts/postgres-local.mjs"
+    "db:local": "node scripts/postgres-local.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",

@@ -48,3 +48,9 @@ next-env.d.ts
 /.postgres-local/
 
 /.arquivo/
+
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/tests/e2e/.auth/

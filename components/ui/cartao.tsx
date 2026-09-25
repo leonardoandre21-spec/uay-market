@@ -64,10 +64,10 @@ export function Indicador({
   return (
     <Cartao className={cn("px-5 py-4", className)}>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-texto-fraco">{rotulo}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-texto-fraco">{rotulo}</p>
         {icone ? <span className="text-texto-fraco">{icone}</span> : null}
       </div>
-      <p className={cn("mt-1 text-2xl font-semibold tabular", cores[tom])}>{valor}</p>
+      <p className={cn("fonte-marca mt-1.5 text-[1.6rem] font-bold leading-tight tabular", cores[tom])}>{valor}</p>
       {detalhe ? <p className="mt-1 text-xs text-texto-suave">{detalhe}</p> : null}
     </Cartao>
   );

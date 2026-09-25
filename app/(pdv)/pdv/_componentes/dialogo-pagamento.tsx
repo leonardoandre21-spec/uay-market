@@ -646,8 +646,8 @@ export function DialogoPagamento({
                 Troco pro cliente: <span className="text-2xl font-bold tabular">{formatarReais(trocoTotal)}</span>
               </p>
             ) : null}
-            <Botao ref={confirmarRef} type="submit" tamanho="xl" pendente={pendente} className="w-full text-lg">
-              Confirmar venda <Tecla className="ml-1 border-primaria-texto/40 bg-transparent text-primaria-texto">Enter</Tecla>
+            <Botao ref={confirmarRef} type="submit" tamanho="xl" variante="destaque" pendente={pendente} className="w-full text-lg">
+              Confirmar venda <Tecla className="ml-1 border-primaria/40 bg-transparent text-primaria">Enter</Tecla>
             </Botao>
           </div>
         )}

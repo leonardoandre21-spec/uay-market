@@ -96,7 +96,7 @@ export function Navegacao({ papel, aoNavegar }: { papel: Papel; aoNavegar?: () =
         if (!itens.length) return null;
         return (
           <div key={grupo.titulo}>
-            <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-texto-fraco">
+            <p className="mb-1.5 px-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-acento">
               {grupo.titulo}
             </p>
             <ul className="flex flex-col gap-0.5">
@@ -109,13 +109,16 @@ export function Navegacao({ papel, aoNavegar }: { papel: Papel; aoNavegar?: () =
                       onClick={aoNavegar}
                       aria-current={ativo ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                        "relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                         ativo
-                          ? "bg-primaria-suave font-medium text-primaria"
-                          : "text-texto-suave hover:bg-superficie-2 hover:text-texto",
+                          ? "bg-white/10 font-medium text-white"
+                          : "text-white/70 hover:bg-white/[0.06] hover:text-white",
                       )}
                     >
-                      <Icone className="size-4 shrink-0" aria-hidden />
+                      {ativo ? (
+                        <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-acento" aria-hidden />
+                      ) : null}
+                      <Icone className={cn("size-4 shrink-0", ativo ? "text-acento" : "text-white/55")} aria-hidden />
                       {rotulo}
                     </Link>
                   </li>

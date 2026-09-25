@@ -32,6 +32,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Tudo menos arquivos estáticos e assets do Next.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|map)$).*)"],
+  // Tudo menos arquivos estáticos, assets do Next e o manifest (o celular baixa sem login).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:png|jpg|jpeg|svg|ico|webp|webmanifest|css|js|map)$).*)"],
 };
